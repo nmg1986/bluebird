@@ -1,0 +1,134 @@
+#!/bin/sh
+# Copyright (c) 2011-2014 DHeaven.
+#
+# Author: niuminguo@d-heaven.com 
+#
+# /etc/init.d/bluebird
+#
+#   and symbolic its link
+#
+# /usr/sbin/rcbluebird
+#
+# System startup script for the nginx daemon
+#
+### BEGIN INIT INFO
+# Provides:      bluebird 
+# Required-Start: 
+# Should-Start:   
+# Required-Stop:  
+# Should-Stop:    
+# Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description:  data sync 
+# Description:   data sync 
+### END INIT INFO
+
+
+RTRSYNCD_BIN=/usr/bluebird/bin/bluebird
+test -x $RTRSYNCD_BIN || {
+echo "$RTRSYNCD_BIN not installed"
+exit 5
+}
+
+CONF=/usr/bluebird/conf/bluebird.conf
+test -r $CONF || {
+echo "$CONF not exist"
+exit 6
+}
+
+#PIDFILE=/var/run/bluebird.pid
+
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     ditto but be verbose in local rc status
+#      rc_status -v -r  ditto and clear the local rc status
+#      rc_failed        set local and overall rc status to failed
+#      rc_failed <num>  set local and overall rc status to <num><num>
+#      rc_reset         clear local rc status (overall remains)
+#      rc_exit          exit appropriate to overall rc status
+
+# Load the rc.status script for this service.
+. /etc/rc.status
+
+# Reset status of this service
+rc_reset
+
+# Return values acc. to LSB for all commands but status:
+# 0 - success
+# 1 - generic or unspecified error
+# 2 - invalid or excess argument(s)
+# 3 - unimplemented feature (e.g. "reload")
+# 4 - insufficient privilege
+# 5 - program is not installed
+# 6 - program is not configured
+# 7 - program is not running
+# 
+# Note that starting an already running service, stopping
+# or restarting a not-running service as well as the restart
+# with force-reload (in case signalling is not supported) are
+# considered a success.
+
+
+
+case "$1" in
+
+    start)
+	echo -n "Starting bluebird daemon"
+        ## Start daemon with startproc(8). If this fails
+        ## the echo return value is set appropriate.
+
+        # NOTE: startproc return 0, even if service is 
+        # already running to match LSB spec.
+        #startproc -p $PIDFILE $RTRSYNCD_BIN 
+        startproc $RTRSYNCD_BIN 
+
+        # Remember status and be verbose
+        rc_status -v
+	;;
+    stop)
+	echo -n "Shutting down bluebird daemon"
+        ## Stop daemon with killproc(8) and if this fails
+        ## set echo the echo return value.
+
+        #killproc -TERM -p $PIDFILE $RTRSYNCD_BIN
+        killproc $RTRSYNCD_BIN
+
+        # Remember status and be verbose
+        rc_status -v
+	;;
+    restart)
+        ## Stop the service and regardless of whether it was
+        ## running or not, start it again.
+        $0 stop
+        $0 start
+
+        # Remember status and be quiet
+        rc_status
+        ;;
+
+    status)
+	echo -n "Checking for the bluebird status"	
+        ## Check status with checkproc(8), if process is running
+        ## checkproc will return with exit status 0.
+
+        # Status has a slightly different for the status command:
+        # 0 - service running
+        # 1 - service dead, but /var/run/  pid  file exists
+        # 2 - service dead, but /var/lock/ lock file exists
+        # 3 - service not running
+
+        # NOTE: checkproc returns LSB compliant status values.
+
+	checkproc  $RTRSYNCD_BIN
+	rc_status -v
+	;;
+
+
+    *)
+	## If no parameters are given, print which are avaiable.
+	echo -e "Usage : \033[32m$0\033[m  [ \033[32mstart\033[m | \033[32mstop\033[m | \033[32mrestart\033[m | \033[32mstatus\033[m ]"
+	exit 1
+	;;
+esac
+rc_exit
