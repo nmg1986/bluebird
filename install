@@ -1,0 +1,25 @@
+#!/bin/bash
+
+. /etc/rc.status
+
+echo -ne "Install Bluebird"
+
+test ! -d /usr/bluebird && {
+	mkdir /usr/bluebird
+	mkdir /usr/bluebird/bin
+	mkdir /usr/bluebird/conf
+}
+
+install bin/* /usr/bluebird/bin
+install conf/* /usr/bluebird/conf
+
+
+install sbin/bluebird /etc/init.d
+ln -sf  /etc/init.d/bluebird /usr/sbin/rcbluebird
+ln -sf  /usr/bluebird/conf/bluebird.conf /etc 
+
+ssh_copy_id=$(which ssh-copy-id)
+mv $ssh_copy_id $(dirname $ssh_copy_id)/$(basename $ssh_copy_id).bak
+install bin/ssh-copy-id $(dirname $ssh_copy_id)
+
+rc_status -v

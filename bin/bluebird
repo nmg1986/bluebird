@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+import config,rsync,tongbu
+import pyinotify
+import subprocess
+import os
+import logging
+import signal
+import sys
+
+def initlog():
+	logger = logging.getLogger()
+	handler = logging.FileHandler(config.logfile)
+	format = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+	handler.setFormatter(format)
+	logger.addHandler(handler)
+	logger.setLevel(logging.NOTSET)
+
+	return logger
+	
+log = initlog()
+
+
+def mirror(event):
+	source=event.pathname
+	target="%s%s%s%s" %(tongbu.target,':',event.path,'/')
+	RSYNC_COMMAND= "%s %s %s %s %s" % (rsync.binary,rsync.option,"-e 'ssh -p "+rsync.port+"'",source,rsync.user+"@"+target)
+	#try :
+	rc=subprocess.call(RSYNC_COMMAND,shell=True)
+	if rc < 0:
+		log.error("rsync failed")
+	else:
+		log.info("rsync successed")
+	#except OSError,error:
+		#log.error("Execution failed:" + error.filename + error.strerror)
+
+def mirror_delete(event):
+	source=event.path + "/"
+	target="%s%s%s%s" %(tongbu.target,':',event.path,'/')
+	RSYNC_COMMAND= "%s %s %s %s %s" % (rsync.binary,rsync.option,"-e 'ssh -p "+rsync.port+"'",source,rsync.user+"@"+target)
+	#try :
+	rc=subprocess.call(RSYNC_COMMAND,shell=True)
+	if rc < 0:
+		log.error("rsync failed")
+	else:
+		log.info("rsync successed")
+	#except OSError,error:
+	#	log.error("Execution failed:" + error.filename + error.strerror)
+	
+class ProcessEvent(pyinotify.ProcessEvent):
+	def process_IN_DELETE(self,event):
+		mirror_delete(event)
+	def process_default(self,event):
+		print event.path
+		mirror(event)
+
+
+if os.path.isfile(config.pidfile):
+	os.remove(config.pidfile)
+
+
+wm = pyinotify.WatchManager()
+mask = pyinotify.IN_CREATE | pyinotify.IN_DELETE | pyinotify.IN_ATTRIB | pyinotify.IN_MODIFY #| pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM | pyinotify.IN_DELETE_SELF 
+
+
+notifier = pyinotify.Notifier(wm,ProcessEvent())
+excl = pyinotify.ExcludeFilter(tongbu.exclude_list)
+for dir in tongbu.sync_list: 
+	try:
+		wm.add_watch(dir,mask,rec=True,auto_add=True,exclude_filter=excl,quiet=False)
+		#wm.add_watch(dir,mask,rec=True,auto_add=True)
+	except pyinotify.WatchManagerError,error:
+		log.error(error)
+		log.error("bluebird start failed")
+		sys.exit()
+
+def quit(signum,message):
+	log.info("bluebird shutdown")
+
+signal.signal(signal.SIGTERM,quit)
+
+
+'''
+SIGKIL can not be cautch or ignored,why?
+
+def force_quit(signum,message):
+	log.info("bluebird shutdown force")
+
+signal.signal(signal.SIGKILL,force_quit)
+'''
+
+try:
+	log.info("bluebird start")
+	#notifier.loop(daemonize=True,pid_file=config.pidfile)
+	notifier.loop(daemonize=False,pid_file=config.pidfile)
+except  KeyboardInterrupt:
+	log.info("bluebird shutdown")
+	os.remove(config.pidfile)
