@@ -55,12 +55,12 @@ def mirror_delete(event,host):
 class ProcessEvent(pyinotify.ProcessEvent):
 	target=tongbu.target
 	def process_IN_DELETE(self,event):
-		for host in target:
+		for host in self.target:
 			task=Process(target=mirror_delete,args=(event,host))
 			task.start()
 			task.join()
 	def process_default(self,event):
-		for host in target:
+		for host in self.target:
 			task=Process(target=mirror,args=(event,host))
 			task.start()
 			task.join()
