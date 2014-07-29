@@ -7,6 +7,7 @@ import os
 import logging
 import signal
 import sys
+from multiprocessing import Process
 
 def initlog():
 	logger = logging.getLogger()
@@ -21,9 +22,9 @@ def initlog():
 log = initlog()
 
 
-def mirror(event):
+def mirror(event,host):
 	source=event.pathname
-	target="%s%s%s%s" %(tongbu.target,':',event.path,'/')
+	target="%s%s%s%s" %(host,':',event.path,'/')
 	RSYNC_COMMAND= "%s %s %s %s %s" % (rsync.binary,rsync.option,"-e 'ssh -p "+rsync.port+"'",source,rsync.user+"@"+target)
 	#try :
 	rc=subprocess.call(RSYNC_COMMAND,shell=True)
@@ -34,9 +35,9 @@ def mirror(event):
 	#except OSError,error:
 		#log.error("Execution failed:" + error.filename + error.strerror)
 
-def mirror_delete(event):
+def mirror_delete(event,host):
 	source=event.path + "/"
-	target="%s%s%s%s" %(tongbu.target,':',event.path,'/')
+	target="%s%s%s%s" %(host,':',event.path,'/')
 	RSYNC_COMMAND= "%s %s %s %s %s" % (rsync.binary,rsync.option,"-e 'ssh -p "+rsync.port+"'",source,rsync.user+"@"+target)
 	#try :
 	rc=subprocess.call(RSYNC_COMMAND,shell=True)
@@ -48,12 +49,17 @@ def mirror_delete(event):
 	#	log.error("Execution failed:" + error.filename + error.strerror)
 	
 class ProcessEvent(pyinotify.ProcessEvent):
+	target=tongbu.target
 	def process_IN_DELETE(self,event):
-		mirror_delete(event)
+		for host in target:
+			task=Process(target=mirror_delete,args=(event,host))
+			task.start()
+			task.join()
 	def process_default(self,event):
-		print event.path
-		mirror(event)
-
+		for host in target:
+			task=Process(target=mirror,args=(event,host))
+			task.start()
+			task.join()
 
 if os.path.isfile(config.pidfile):
 	os.remove(config.pidfile)

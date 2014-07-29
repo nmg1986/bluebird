@@ -17,7 +17,7 @@ parser.read("/etc/bluebird.conf")
 #except ConfigParser.NoOptionError,error:
 #	print error
 try:
-	target=parser.get("target","target")
+	target=parser.get("target","target").split(':')
 	sync_list=parser.get("source","path").split(':')
 	exclude_list=parser.get("exclude","path").split(':')
 except ConfigParser.NoOptionError,error:
